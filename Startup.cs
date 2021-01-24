@@ -25,7 +25,7 @@ namespace aspnetcore_spa
         {
 
             services.AddScoped<IUnitOfWork , UnitOfWork>();
-            services.AddScoped<IVehicleRepository , VehicleRepository>();
+            //services.AddScoped<IVehicleRepository , VehicleRepository>();
 
             services.AddAutoMapper(typeof(Startup));
             

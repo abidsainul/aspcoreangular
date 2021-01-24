@@ -16,13 +16,11 @@ namespace aspnetcore_spa.Controllers
     {
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
-        private readonly IVehicleRepository repository;
         private readonly IUnitOfWork unitOfWork;
 
-        public VehiclesController(IMapper mapper, ApplicationDbContext context, IVehicleRepository repository, IUnitOfWork unitOfWork)
+        public VehiclesController(IMapper mapper, ApplicationDbContext context, IUnitOfWork unitOfWork)
         {
             this.unitOfWork = unitOfWork;
-            this.repository = repository;
             this._context = context;
             this._mapper = mapper;
         }
@@ -58,10 +56,10 @@ namespace aspnetcore_spa.Controllers
             }
 
             //update to db
-            await repository.AddVehicle(vehicle);
+            await unitOfWork.VehicleRepository.AddVehicle(vehicle);
             await unitOfWork.CompleteAsync();
 
-            vehicle = await repository.GetVehicle(vehicle.Id);
+            vehicle = await unitOfWork.VehicleRepository.GetVehicle(vehicle.Id);
 
             var result = _mapper.Map<Vehicle, VehicleResource>(vehicle);
 
@@ -100,7 +98,7 @@ namespace aspnetcore_spa.Controllers
 
             await unitOfWork.CompleteAsync();
 
-            vehicle = await repository.GetVehicle(vehicle.Id);
+            vehicle = await unitOfWork.VehicleRepository.GetVehicle(vehicle.Id);
 
             var result = _mapper.Map<Vehicle, VehicleResource>(vehicle);
 
@@ -112,12 +110,12 @@ namespace aspnetcore_spa.Controllers
         public async Task<IActionResult> DeleteVehicle(int id)
         {
 
-            var vehicle = await repository.GetVehicle(id, includeRelated: false);
+            var vehicle = await unitOfWork.VehicleRepository.GetVehicle(id, includeRelated: false);
 
             if (vehicle == null)
                 return NotFound();
 
-            repository.RemoveVehicle(vehicle);
+            unitOfWork.VehicleRepository.RemoveVehicle(vehicle);
 
             await unitOfWork.CompleteAsync();
 
@@ -129,7 +127,7 @@ namespace aspnetcore_spa.Controllers
         public async Task<IActionResult> GetVehicle(int id)
         {
 
-            var vehicle = await repository.GetVehicle(id);
+            var vehicle = await unitOfWork.VehicleRepository.GetVehicle(id);
 
             if (vehicle == null)
                 return NotFound();
