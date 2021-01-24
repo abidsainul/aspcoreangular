@@ -8,7 +8,7 @@ namespace aspnetcore_spa.Models
         public int Id { get; set; }
         public string Name { get; set; }
 
-        public ICollection<Model> Models { get; set; }
+        public virtual ICollection<Model> Models { get; set; }
 
         public Make()
         {
