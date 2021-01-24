@@ -16,81 +16,93 @@ namespace aspnetcore_spa.Controllers
     {
         private readonly IMapper _mapper;
         private readonly ApplicationDbContext _context;
+        private readonly IVehicleRepository repository;
+        private readonly IUnitOfWork unitOfWork;
 
-        public VehiclesController(IMapper mapper, ApplicationDbContext context)
+        public VehiclesController(IMapper mapper, ApplicationDbContext context, IVehicleRepository repository, IUnitOfWork unitOfWork)
         {
+            this.unitOfWork = unitOfWork;
+            this.repository = repository;
             this._context = context;
             this._mapper = mapper;
-
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateVehicle([FromBody] VehicleResource vehicleResource)
+        public async Task<IActionResult> CreateVehicle([FromBody] SaveVehicleResource vehicleResource)
         {
 
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
             var model = await _context.Models.FindAsync(vehicleResource.ModelId);
-            if(model == null) {
-                ModelState.AddModelError("ModelId","Invalid Model Id");
+            if (model == null)
+            {
+                ModelState.AddModelError("ModelId", "Invalid Model Id");
                 return BadRequest(ModelState);
             }
 
-            var vehicle = _mapper.Map<VehicleResource, Vehicle>(vehicleResource);
+            var vehicle = _mapper.Map<SaveVehicleResource, Vehicle>(vehicleResource);
             vehicle.LastUpdate = DateTime.Now;
             //vehicle.Features = new Collection<Feature>();
 
             // Add existing features to vehicle
-            // foreach(var featureId in vehicleResource.Features){
-            //         var feature = await _context.Features.FindAsync(featureId);
-            //         if(feature != null){
-            //             vehicle.Features.Add(feature);
-            //         }
-            // }
+            foreach (var featureId in vehicleResource.Features)
+            {
+                var feature = await _context.Features.FindAsync(featureId);
+                if (feature != null)
+                {
+                    vehicle.Features.Add(feature);
+                }
+            }
 
             //update to db
-            await _context.Vehicles.AddAsync(vehicle);
-            await _context.SaveChangesAsync();
+            await repository.AddVehicle(vehicle);
+            await unitOfWork.CompleteAsync();
 
-            var result = _mapper.Map<Vehicle,VehicleResource>(vehicle);
+            vehicle = await repository.GetVehicle(vehicle.Id);
+
+            var result = _mapper.Map<Vehicle, VehicleResource>(vehicle);
 
             return Ok(result);
         }
 
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateVehicle(int id,[FromBody] VehicleResource vehicleResource)
+        public async Task<IActionResult> UpdateVehicle(int id, [FromBody] SaveVehicleResource vehicleResource)
         {
 
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var vehicle = await _context.Vehicles.Include(x=>x.Features).SingleOrDefaultAsync(vehicle=>vehicle.Id == id);
+            var vehicle = await _context.Vehicles.Include(x => x.Features).SingleOrDefaultAsync(vehicle => vehicle.Id == id);
 
-            if(vehicle == null)
-             return NotFound();
+            if (vehicle == null)
+                return NotFound();
 
             vehicleResource.Id = id;
-            _mapper.Map<VehicleResource, Vehicle>(vehicleResource,vehicle);
+            _mapper.Map<SaveVehicleResource, Vehicle>(vehicleResource, vehicle);
             vehicle.LastUpdate = DateTime.Now;
 
-            
+
             // Add existing features to vehicle
-            foreach(var featureId in vehicleResource.Features){
-                    var feature = await _context.Features.FindAsync(featureId);
-                    if(feature != null && !vehicle.Features.Any(f => f.Id == featureId)){
-                        vehicle.Features.Add(feature);
-                    }
+            foreach (var featureId in vehicleResource.Features)
+            {
+                var feature = await _context.Features.FindAsync(featureId);
+                if (feature != null && !vehicle.Features.Any(f => f.Id == featureId))
+                {
+                    vehicle.Features.Add(feature);
+                }
             }
 
-            await _context.SaveChangesAsync();
+            await unitOfWork.CompleteAsync();
 
-            var result = _mapper.Map<Vehicle,VehicleResource>(vehicle);
+            vehicle = await repository.GetVehicle(vehicle.Id);
+
+            var result = _mapper.Map<Vehicle, VehicleResource>(vehicle);
 
             return Ok(result);
         }
@@ -100,14 +112,14 @@ namespace aspnetcore_spa.Controllers
         public async Task<IActionResult> DeleteVehicle(int id)
         {
 
-             var vehicle = await _context.Vehicles.FindAsync(id);
+            var vehicle = await repository.GetVehicle(id, includeRelated: false);
 
-             if(vehicle == null)
+            if (vehicle == null)
                 return NotFound();
 
-            _context.Remove(vehicle);
+            repository.RemoveVehicle(vehicle);
 
-            await _context.SaveChangesAsync();
+            await unitOfWork.CompleteAsync();
 
             return Ok(id);
 
@@ -117,14 +129,14 @@ namespace aspnetcore_spa.Controllers
         public async Task<IActionResult> GetVehicle(int id)
         {
 
-             var vehicle = await _context.Vehicles.Include(x=>x.Features).SingleOrDefaultAsync(vehicle=>vehicle.Id == id);
+            var vehicle = await repository.GetVehicle(id);
 
-             if(vehicle == null)
+            if (vehicle == null)
                 return NotFound();
 
 
-            var result = _mapper.Map<Vehicle,VehicleResource>(vehicle);
-            
+            var result = _mapper.Map<Vehicle, VehicleResource>(vehicle);
+
 
             return Ok(result);
 
