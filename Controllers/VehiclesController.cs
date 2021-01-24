@@ -113,5 +113,22 @@ namespace aspnetcore_spa.Controllers
 
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetVehicle(int id)
+        {
+
+             var vehicle = await _context.Vehicles.Include(x=>x.Features).SingleOrDefaultAsync(vehicle=>vehicle.Id == id);
+
+             if(vehicle == null)
+                return NotFound();
+
+
+            var result = _mapper.Map<Vehicle,VehicleResource>(vehicle);
+            
+
+            return Ok(result);
+
+        }
+
     }
 }
