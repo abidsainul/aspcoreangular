@@ -29,14 +29,12 @@ namespace aspnetcore_spa.Mapping
             .ForMember(v => v.Features, opt => opt​.Ignore())
             .AfterMap((vr , v) => {
 
-                // Remove unselected features
+               
+                 // Remove unselected features
+                
                 var removedFeatures = new List<Feature>();
-                foreach (var f in v.Features)
-                {
-                    if(!vr.Features.Contains(f.Id))
-                        removedFeatures.Add(f);
-                }
-
+                removedFeatures = v.Features.Where(f => !vr.Features.Contains(f.Id)).ToList();
+                
                 foreach (var f in removedFeatures)
                 {
                     v.Features.Remove(f);
@@ -51,8 +49,6 @@ namespace aspnetcore_spa.Mapping
 
             });
             
-            //.ForMember(v => v.Features, opt => opt.MapFrom(vr => vr.Features.Select( id => new Feature { Id = id})));
-
         }
     }
 }

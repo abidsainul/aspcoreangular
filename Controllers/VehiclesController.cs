@@ -72,12 +72,14 @@ namespace aspnetcore_spa.Controllers
 
             var vehicle = await _context.Vehicles.Include(x=>x.Features).SingleOrDefaultAsync(vehicle=>vehicle.Id == id);
 
+            if(vehicle == null)
+             return NotFound();
+
             vehicleResource.Id = id;
             _mapper.Map<VehicleResource, Vehicle>(vehicleResource,vehicle);
             vehicle.LastUpdate = DateTime.Now;
 
-            //vehicle.Id = id;  // ?? not setting Id after automap
-
+            
             // Add existing features to vehicle
             foreach(var featureId in vehicleResource.Features){
                     var feature = await _context.Features.FindAsync(featureId);
@@ -85,12 +87,30 @@ namespace aspnetcore_spa.Controllers
                         vehicle.Features.Add(feature);
                     }
             }
-            
+
             await _context.SaveChangesAsync();
 
             var result = _mapper.Map<Vehicle,VehicleResource>(vehicle);
 
             return Ok(result);
+        }
+
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteVehicle(int id)
+        {
+
+             var vehicle = await _context.Vehicles.FindAsync(id);
+
+             if(vehicle == null)
+                return NotFound();
+
+            _context.Remove(vehicle);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(id);
+
         }
 
     }
